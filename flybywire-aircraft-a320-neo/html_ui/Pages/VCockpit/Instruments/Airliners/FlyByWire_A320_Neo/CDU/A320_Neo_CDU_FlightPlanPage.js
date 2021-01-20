@@ -209,7 +209,7 @@ class CDUFlightPlanPage {
                         } else if (value.length > 0) {
                             mcdu.insertWaypoint(value, fpm.getWaypointsCount() - 1, () => {
                                 CDUFlightPlanPage.ShowPage(mcdu, offset);
-                            });
+                            }, true);
                         }
                     };
                 }
@@ -367,11 +367,11 @@ class CDUFlightPlanPage {
                                 } else if (value === FMCMainDisplay.clrValue) {
                                     mcdu.removeWaypoint(fpIndex, () => {
                                         CDUFlightPlanPage.ShowPage(mcdu, offset);
-                                    });
+                                    }, true);
                                 } else if (value.length > 0) {
                                     mcdu.insertWaypoint(value, fpIndex, () => {
                                         CDUFlightPlanPage.ShowPage(mcdu, offset);
-                                    });
+                                    }, true);
                                 }
                             };
                             mcdu.rightInputDelay[fixRow] = () => {
@@ -432,11 +432,17 @@ class CDUFlightPlanPage {
                                     rows[2 * fixRow + 3] = ["---F-PLN DISCONTINUITY--"];
 
                                     mcdu.onLeftInput[fixRow + 1] = (value) => {
-                                        if (value === FMCMainDisplay.clrValue && waypoint.discontinuityCanBeCleared) {
-                                            waypoint.endsInDiscontinuity = false;
-
-                                            CDUFlightPlanPage.ShowPage(mcdu, offset);
+                                        if (value === FMCMainDisplay.clrValue) {
+                                            if (waypoint.discontinuityCanBeCleared) {
+                                                mcdu.clearDiscontinuity(index, () => {
+                                                    CDUFlightPlanPage.ShowPage(mcdu, offset);
+                                                }, true);
+                                            }
+                                            return;
                                         }
+                                        mcdu.insertWaypoint(value, index + 1, () => {
+                                            CDUFlightPlanPage.ShowPage(mcdu, offset);
+                                        }, true);
                                     };
                                 }
                                 discontinuityCount++;
