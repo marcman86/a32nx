@@ -1,15 +1,17 @@
 const MAX_FIX_ROW = 5;
 class CDUFlightPlanPage {
     static ShowPage(mcdu, offset = 0) {
-        mcdu.flightPlanManager.updateWaypointDistances(false /* approach */);
-        mcdu.flightPlanManager.updateWaypointDistances(true /* approach */);
+        //mcdu.flightPlanManager.updateWaypointDistances(false /* approach */);
+        //mcdu.flightPlanManager.updateWaypointDistances(true /* approach */);
         mcdu.clearDisplay();
         mcdu.page.Current = mcdu.page.FlightPlanPage;
         mcdu.activeSystem = 'FMGC';
         CDUFlightPlanPage._timer = 0;
+        const renderedWaypointIndex = mcdu.flightPlanManager.getActiveWaypointIndex();
         mcdu.pageUpdate = () => {
             CDUFlightPlanPage._timer++;
-            if (CDUFlightPlanPage._timer >= 100) {
+            const waypointIndex = mcdu.flightPlanManager.getActiveWaypointIndex();
+            if (CDUFlightPlanPage._timer >= 100 || waypointIndex !== renderedWaypointIndex) {
                 CDUFlightPlanPage.ShowPage(mcdu, offset);
             }
         };
@@ -296,9 +298,11 @@ class CDUFlightPlanPage {
                         if (index === 0 && offset === 0) {
                             fixAnnotation = "\xa0FROM";
                         } else if (fpm.getDepartureProcIndex() !== -1 && fpm.getDepartureWaypoints().some(fix => fix === waypoint)) {
-                            fixAnnotation = fpm.getDeparture().name;
+                            const departure = fpm.getDeparture();
+                            fixAnnotation = departure ? departure.name : undefined;
                         } else if (fpm.getArrivalProcIndex() !== -1 && fpm.getArrivalWaypoints().some(fix => fix === waypoint)) {
-                            fixAnnotation = fpm.getArrival().name;
+                            const arrival = fpm.getArrival();
+                            fixAnnotation = arrival ? arrival.name : undefined;
                         } else {
                             fixAnnotation = airwayName;
                         }

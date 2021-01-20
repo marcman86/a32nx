@@ -122,12 +122,8 @@ class SvgWaypointElement extends SvgMapElement {
         ctx.font = fontSize + "px " + map.config.waypointLabelFontFamily;
         this._textWidth = ctx.measureText(text).width;
         this._textHeight = fontSize * 0.675;
-        let ident;
-        const activeWaypoint = fpm.FlightPlanManager.DEBUG_INSTANCE.getActiveWaypoint(false, true);
-        if (activeWaypoint) {
-            ident = activeWaypoint.ident;
-        }
-        const isActiveWaypoint = this.source.ident === ident;
+        const wp = fpm.FlightPlanManager.DEBUG_INSTANCE.getActiveWaypoint();
+        const isActiveWaypoint = this.source === wp || (wp && wp.icao === this.source.icao);
         this._refreshLabel(map, isActiveWaypoint);
         this._image = document.createElementNS(Avionics.SVG.NS, "image");
         this._image.id = this.id(map);
@@ -172,10 +168,6 @@ class SvgWaypointElement extends SvgMapElement {
             return;
         }
         const context = canvas.getContext("2d");
-        if (map.config.waypointLabelUseBackground) {
-            context.fillStyle = "black";
-            context.fillRect(0, 0, this._textWidth + map.config.waypointLabelBackgroundPaddingLeft + map.config.waypointLabelBackgroundPaddingRight, this._textHeight + map.config.waypointLabelBackgroundPaddingTop + map.config.waypointLabelBackgroundPaddingBottom);
-        }
         if (!isActiveWaypoint) {
             if (this.source instanceof IntersectionInfo) {
                 context.fillStyle = map.config.intersectionLabelColor;
@@ -204,7 +196,7 @@ class SvgWaypointElement extends SvgMapElement {
             this.x = pos.x;
             this.y = pos.y;
         }
-        const wp = fpm.FlightPlanManager.DEBUG_INSTANCE.getActiveWaypoint(false, true);
+        const wp = fpm.FlightPlanManager.DEBUG_INSTANCE.getActiveWaypoint();
         const isActiveWaypoint = this.source === wp || (wp && wp.icao === this.source.icao);
         if (isActiveWaypoint != this._lastIsActiveWaypoint) {
             this._refreshLabel(map, isActiveWaypoint);

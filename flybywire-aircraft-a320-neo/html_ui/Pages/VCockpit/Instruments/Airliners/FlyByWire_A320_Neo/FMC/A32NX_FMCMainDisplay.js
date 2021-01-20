@@ -191,6 +191,8 @@ class FMCMainDisplay extends BaseAirliners {
         this.dataManager = new FMCDataManager(this);
 
         this.flightPhaseManager = new A32NX_FlightPhaseManager(this);
+        this.guidanceManager = new fpm.GuidanceManager(this.flightPlanManager);
+        this._flightGuidance = new NXFlightGuidance(this);
 
         this.tempCurve = new Avionics.Curve();
         this.tempCurve.interpolationFunction = Avionics.CurveTool.NumberInterpolation;
@@ -792,29 +794,6 @@ class FMCMainDisplay extends BaseAirliners {
                         SimVar.SetSimVarValue("L:A32NX_AP_CSTN_ALT", "feet", 0);
                         Coherent.call("AP_ALT_VAR_SET_ENGLISH", 2, altitude, this._forceNextAltitudeUpdate);
                         this._forceNextAltitudeUpdate = false;
-                    }
-                }
-            }
-            if (!this.flightPlanManager.isActiveApproach()) {
-                const activeWaypoint = this.flightPlanManager.getActiveWaypoint();
-                const nextActiveWaypoint = this.flightPlanManager.getNextActiveWaypoint();
-                if (activeWaypoint && nextActiveWaypoint) {
-                    let pathAngle = nextActiveWaypoint.bearingInFP - activeWaypoint.bearingInFP;
-                    while (pathAngle < 180) {
-                        pathAngle += 360;
-                    }
-                    while (pathAngle > 180) {
-                        pathAngle -= 360;
-                    }
-                    const absPathAngle = 180 - Math.abs(pathAngle);
-                    const airspeed = Simplane.getIndicatedSpeed();
-                    if (airspeed < 400) {
-                        const turnRadius = airspeed * 360 / (1091 * 0.36 / airspeed) / 3600 / 2 / Math.PI;
-                        const activateDistance = Math.pow(90 / absPathAngle, 1.6) * turnRadius * 1.2;
-                        const distanceToActive = Avionics.Utils.computeGreatCircleDistance(planeCoordinates, activeWaypoint.infos.coordinates);
-                        if (distanceToActive < activateDistance) {
-                            this.flightPlanManager.setActiveWaypointIndex(this.flightPlanManager.getActiveWaypointIndex() + 1);
-                        }
                     }
                 }
             }
@@ -1654,8 +1633,7 @@ class FMCMainDisplay extends BaseAirliners {
                 this.flightPlanManager.addWaypoint(waypoint.icao, index, () => {
                     return callback(true);
                 });
-            }
-            else {
+            } else {
                 this.ensureCurrentFlightPlanIsTemporary(async () => {
                     this.flightPlanManager.addWaypoint(waypoint.icao, index, () => {
                         return callback(true);
