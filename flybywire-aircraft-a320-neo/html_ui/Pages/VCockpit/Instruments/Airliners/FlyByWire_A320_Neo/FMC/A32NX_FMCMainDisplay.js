@@ -1645,22 +1645,9 @@ class FMCMainDisplay extends BaseAirliners {
 
     activateDirectToWaypoint(waypoint, callback = EmptyCallback.Void) {
         const waypoints = this.flightPlanManager.getWaypoints();
-        const indexInFlightPlan = waypoints.findIndex(w => {
-            return w.icao === waypoint.icao;
-        });
-        let i = 1;
-        const removeWaypointMethod = (callback = EmptyCallback.Void) => {
-            if (i < indexInFlightPlan) {
-                this.flightPlanManager.removeWaypoint(1, i === indexInFlightPlan - 1, () => {
-                    i++;
-                    removeWaypointMethod(callback);
-                });
-            } else {
-                callback();
-            }
-        };
-        removeWaypointMethod(() => {
-            this.flightPlanManager.activateDirectTo(waypoint.infos.icao, callback);
+        this.flightPlanManager.activateDirectTo(waypoint.infos.icao, () => {
+            SimVar.SetSimVarValue("K:A32NX.FMGC_DIR_TO_TRIGGER", "number", 0);
+            callback();
         });
     }
 

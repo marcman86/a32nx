@@ -29,6 +29,7 @@ import { GPS } from './GPS';
 import { ProcedureDetails } from './ProcedureDetails';
 import { DirectTo } from './DirectTo';
 import { GeoMath } from './GeoMath';
+import { WaypointBuilder } from "./WaypointBuilder";
 
 /**
  * A flight plan managed by the FlightPlanManager.
@@ -194,9 +195,9 @@ export class ManagedFlightPlan {
    * be appended to the end of the flight plan.
    * @param segmentType The type of segment to add the waypoint to.
    */
-  public addWaypoint(waypoint: WayPoint, index?: number | undefined, segmentType?: SegmentType): void {
+  public addWaypoint(waypoint: WayPoint | any, index?: number | undefined, segmentType?: SegmentType): void {
 
-    const mappedWaypoint = (waypoint instanceof WayPoint) ? waypoint : RawDataMapper.toWaypoint(waypoint, this._parentInstrument);
+    const mappedWaypoint: WayPoint = (waypoint instanceof WayPoint) ? waypoint : RawDataMapper.toWaypoint(waypoint, this._parentInstrument);
     if (mappedWaypoint.type === 'A' && index === 0) {
       this.originAirfield = mappedWaypoint;
 
@@ -311,14 +312,15 @@ export class ManagedFlightPlan {
     }
 
     // transfer a potential discontinuity forward
-    if (removed && removed.endsInDiscontinuity && index > 0) {
-      this.waypoints[index - 1].endsInDiscontinuity = true;
-      this.waypoints[index - 1].discontinuityCanBeCleared = true;
-    }
-    else {
-      // otherwise insert a discontinuity
-      this.waypoints[index - 1].endsInDiscontinuity = true;
-      this.waypoints[index - 1].discontinuityCanBeCleared = true;
+    if (this.waypoints[index - 1]) {
+      if (removed && removed.endsInDiscontinuity) {
+        this.waypoints[index - 1].endsInDiscontinuity = true;
+        this.waypoints[index - 1].discontinuityCanBeCleared = true;
+      } else {
+        // otherwise insert a discontinuity
+        this.waypoints[index - 1].endsInDiscontinuity = true;
+        this.waypoints[index - 1].discontinuityCanBeCleared = true;
+      }
     }
 
     if (index < this.activeWaypointIndex) {
@@ -543,63 +545,16 @@ export class ManagedFlightPlan {
    * @param index The waypoint index to go direct to.
    */
   public addDirectTo(index: number): void {
-    const interceptPoints = this.calculateDirectIntercept(this.getWaypoint(index));
-    this.addWaypoint(interceptPoints[0], index);
-
-    this.activeWaypointIndex = index + 1;
-
-    this.directTo.isActive = true;
-    this.directTo.waypointIsInFlightPlan = true;
-    this.directTo.planWaypointIndex = index + 1;
-    this.directTo.interceptPoints = interceptPoints;
-  }
-
-  /**
-   * Calculates an intercept path to a direct-to waypoint.
-   * @param waypoint The waypoint to calculate the path to.
-   * @returns The waypoints that make up the intercept path.
-   */
-  public calculateDirectIntercept(waypoint: WayPoint): WayPoint[] {
     const lat = SimVar.GetSimVarValue("PLANE LATITUDE", "degree latitude");
     const long = SimVar.GetSimVarValue("PLANE LONGITUDE", "degree longitude");
 
-    const planeCoords = new LatLongAlt(lat, long);
+    const turningPoint = WaypointBuilder.fromCoordinates('T-P', new LatLongAlt(lat, long), this._parentInstrument);
 
-    const groundSpeed = SimVar.GetSimVarValue("GPS GROUND SPEED", "knots");
-    const planeHeading = SimVar.GetSimVarValue("PLANE HEADING DEGREES TRUE", "Radians") * Avionics.Utils.RAD2DEG;
+    const deleteCount = index - this.activeWaypointIndex;
+    this.addWaypoint(turningPoint, index);
+    this.activeWaypointIndex = index;
 
-    const headingToFix = Avionics.Utils.computeGreatCircleHeading(planeCoords, waypoint.infos.coordinates);
-    let angleDiff = Math.abs(Avionics.Utils.angleDiff(planeHeading, headingToFix));
-
-    const turnDurationSeconds = (angleDiff / 3) + 6;
-    const interceptDistance = (groundSpeed / 60 / 60) * turnDurationSeconds * 1.25;
-
-    const createInterceptPoint = (coords: LatLongAlt) => {
-      const interceptWaypoint = new WayPoint(this._parentInstrument);
-      interceptWaypoint.ident = '$DIR';
-
-      interceptWaypoint.infos = new IntersectionInfo(this._parentInstrument);
-      interceptWaypoint.infos.coordinates = coords;
-
-      return interceptWaypoint;
-    };
-
-    const coords = Avionics.Utils.bearingDistanceToCoordinates(planeHeading, Math.min(interceptDistance, 1.0), lat, long);
-    return [createInterceptPoint(coords)];
-
-    //TODO: Work out better direct to intercept waypoint(s)
-    /*
-    if (angleDiff < 90 && angleDiff > -90) {
-      const coords = Avionics.Utils.bearingDistanceToCoordinates(planeHeading, interceptDistance, lat, long);
-      return [createInterceptPoint(planeCoords), createInterceptPoint(coords)];
-    }
-    else {
-      const coords1 = Avionics.Utils.bearingDistanceToCoordinates(planeHeading, interceptDistance / 2, lat, long);
-      const coords2 = Avionics.Utils.bearingDistanceToCoordinates(planeHeading + (angleDiff / 2), interceptDistance / 2, coords1.lat, coords1.long);
-
-      return [createInterceptPoint(planeCoords), createInterceptPoint(coords1), createInterceptPoint(coords2)];
-    }
-    */
+    // TODO remove waypoints
   }
 
   /**

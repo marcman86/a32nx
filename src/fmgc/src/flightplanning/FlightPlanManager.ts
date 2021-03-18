@@ -1376,14 +1376,19 @@ export class FlightPlanManager {
   public async activateDirectTo(icao: string, callback = EmptyCallback.Void): Promise<void> {
     const currentFlightPlan = this._flightPlans[this._currentFlightPlanIndex];
 
-    while (currentFlightPlan.waypoints.findIndex(w => w.ident === "$DIR") > -1) {
-      currentFlightPlan.removeWaypoint(currentFlightPlan.waypoints.findIndex(w => w.ident === "$DIR"));
+    let waypointIndex = currentFlightPlan.waypoints.findIndex(w => w.icao === icao);
+    if (waypointIndex === -1) {
+      // string, to the start of the flight plan, then direct to
+      const waypoint = await this._parentInstrument.facilityLoader.getFacilityRaw(icao);
+      waypoint.endsInDiscontinuity = true;
+      waypoint.discontinuityCanBeCleared = true;
+      // TODO fix discontinuity
+      currentFlightPlan.addWaypoint(waypoint, currentFlightPlan.activeWaypointIndex);
+      waypointIndex = currentFlightPlan.waypoints.findIndex(w => w.icao === icao);
+      currentFlightPlan.activeWaypointIndex = waypointIndex;
     }
 
-    const waypointIndex = currentFlightPlan.waypoints.findIndex(w => w.icao === icao);
-    if (waypointIndex !== -1) {
-      currentFlightPlan.addDirectTo(waypointIndex);
-    }
+    currentFlightPlan.addDirectTo(waypointIndex);
 
     this._updateFlightPlanVersion();
     callback();
