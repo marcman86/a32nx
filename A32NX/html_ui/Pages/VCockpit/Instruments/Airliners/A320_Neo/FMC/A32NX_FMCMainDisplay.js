@@ -218,8 +218,12 @@ class FMCMainDisplay extends BaseAirliners {
         this.tempCurve.add(700 * 3.28084, -53.57);
         this.tempCurve.add(800 * 3.28084, -74.51);
 
-        this.cruiseFlightLevel = SimVar.GetGameVarValue("AIRCRAFT CRUISE ALTITUDE", "feet");
-        this.cruiseFlightLevel /= 100;
+        const crzAlt = SimVar.GetGameVarValue("AIRCRAFT CRUISE ALTITUDE", "feet");
+        
+        if (!!crzAlt) {
+            mcdu._cruiseEntered = true;
+            this.cruiseFlightLevel = crzAlt / 100;
+        }       
 
         SimVar.SetSimVarValue("L:FLIGHTPLAN_USE_DECEL_WAYPOINT", "number", 1);
 
